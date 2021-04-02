@@ -1,0 +1,20 @@
+{
+    "processes": [
+        {  
+            "procNo":1, 
+            "procNm": "MMI_INTEG",
+            "procCd": "IMMI",
+            "index": 1,
+            "gbn": "/IntegratedInterface/",
+	    "remoteInfo":{"host":"172.30.13.188", "user":"ni71", "pw":"!ni123", "prompt":"$"}
+        },
+	{
+            "procNo":2,
+            "procNm": "MMI_RELOC",
+            "procCd": "RMMI",
+            "index": 1,
+            "gbn": "/MemberRelocation/",
+            "remoteInfo":{"host":"172.30.13.188", "user":"ni71", "pw":"!ni123", "prompt":"$"}
+        }
+    ]
+}

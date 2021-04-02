@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration scan="true" scanPeriod="60 seconds">
+
+<!--
+%d{yyyy-MM-dd HH:mm:ss} | %-5p | [%thread] %logger{5}:%L - %msg%n  -->
+	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+		<pattern>%date{HH:mm:ss.SSS}[%5p] %m %n</pattern>
+		</encoder>
+	</appender>
+
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    	<file>D:\source\java\workspace_qms\CATS_faultmgr\log\process.log</file>
+    	
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>D:\source\java\workspace_qms\CATS_faultmgr\log\process.%d{yyyyMMdd}.log</fileNamePattern>
+   
+            <!-- keep 7 days' worth of history -->
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        
+        <encoder>
+            <pattern>
+                %date{HH:mm:ss.SSS}[%5p][%t][%logger-%L] %m %n
+            </pattern>
+        </encoder>
+    </appender>
+
+<!-- 
+    <logger name="org.springframework">
+        <level value="INFO" />
+    </logger>
+ -->
+    <logger name="org.mybatis">
+        <level value="DEBUG" />
+    </logger>
+
+   <root>
+		<level value="DEBUG" />
+        <appender-ref ref="CONSOLE" />
+		<appender-ref ref="FILE" />
+    </root>
+
+</configuration>

@@ -1,0 +1,13 @@
+{
+	"H2M":{
+	  "driver"   :"org.h2.Driver",
+	  "url"      :"jdbc:h2:tcp://127.0.0.1:8888/mem:H2M",
+	  "username" :"NMS",
+	  "password" :"NMS",
+	  "minIdle"  :2,
+	  "maxIdle"  :2,
+	  "maxWait"  :10,
+	  "maxActive":5,
+	  "initialSize":5
+	}
+}
