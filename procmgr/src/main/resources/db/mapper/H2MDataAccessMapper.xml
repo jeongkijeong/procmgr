@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.mlog.faultmgr.dataaccess.H2MDataAccessMapper">
+
+	<select id="selectSystemLogFault" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT 
+			FALT_ID      AS FALT_ID,
+			SYS_GBN_CD   AS FALT_GBN_CD,
+			ERR_GBN_CD   AS ERR_GBN_CD,
+			COLL_DTTI    AS COLL_DTTI,
+			'host:' || HOST || ' system:' || SYS_GBN_CD || ' message:' || ERR_MSG AS TRANS_CONTS
+		FROM
+		SYSTEM_FALT_LOG
+		WHERE 1=1
+		AND FALT_ID > #{FALT_ID}
+		AND SMS_YN IN ('Y', 'y')
+	</select>
+
+
+	<insert id="insertSystemLogFault" parameterType="java.util.HashMap">
+		INSERT INTO SYSTEM_FALT_LOG (FALT_ID, SYS_GBN_CD, ERR_GBN_CD, ERR_MSG, HOST, MESSAGE, SMS_YN, COLL_DTTI)
+		VALUES (FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmssSSS') || cast ((rand() * 1000) as int), #{systemcode}, #{errorcode}, #{errormsg}, #{hostname}, #{message},
+			#{smsyn}, FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmss')
+		)
+	</insert>
+
+
+	<select id="selectProcessProperty" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT PROPERTY_KEY, PROPERTY_VAL FROM PROCESS_PROPERTY
+	</select>
+
+
+	<insert id="insertProcessProperty" parameterType="java.util.HashMap">
+		MERGE INTO PROCESS_PROPERTY KEY (PROPERTY_KEY) VALUES (#{PROPERTY_KEY}, #{PROPERTY_VAL});
+	</insert>
+	
+
+	<select id="selectSMSPernUserInfo" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT DISTINCT USER_ID, USER_TEL_NO AS RCVR_TEL_NO FROM SMS_PERN_USER_INFO WHERE 1=1 AND FALT_GBN_CD = #{FALT_GBN_CD}
+	</select>
+
+
+	<!-- 감시 프로세스 정보 저장
+	<insert id="insertTargetProcessInfo" parameterType="java.util.HashMap">
+		MERGE INTO TARGET_PROCESS_INFO (PROC_NO, PROC_NAME, PROC_CODE, PROC_INDX, HOST_IP, HOST_ID, HOST_PW, PROMPT)
+		KEY(PROC_CODE, PROC_INDX)
+		(
+			SELECT
+			     #{procNo} AS PROC_NO,
+			     #{procNm} AS PROC_NAME,
+			     #{procCd} AS PROC_CODE,
+			     #{index}  AS PROC_INDX,
+			     #{remoteInfo.host}   AS HOST_IP,
+			     #{remoteInfo.user}   AS HOST_ID,
+			     #{remoteInfo.pw}     AS HOST_PW,
+			     #{remoteInfo.prompt} AS HOST_PW
+			FROM DUAL
+		)
+	</insert>
+	 -->
+
+	<insert id="insertTargetProcessInfo" parameterType="java.util.HashMap">
+		MERGE INTO TARGET_PROCESS_INFO (PROC_NO, PROC_NAME, PROC_CODE, PROC_INDX, HOST_IP, HOST_ID, HOST_PW, PROMPT)
+		KEY(PROC_CODE, PROC_INDX)
+		(
+			SELECT
+			     #{PROC_NO} AS PROC_NO,
+			     #{PROC_NAME} AS PROC_NAME,
+			     #{PROC_CODE} AS PROC_CODE,
+			     #{PROC_INDX} AS PROC_INDX,
+			     #{REMOTE_INFO.HOST} AS HOST_IP,
+			     #{REMOTE_INFO.USER} AS HOST_ID,
+			     #{REMOTE_INFO.PW} AS HOST_PW,
+			     #{REMOTE_INFO.PROMPT} AS PROMPT
+			FROM DUAL
+		)
+	</insert>
+
+	<!-- 통합인터페이스 정보저장 -->
+	<insert id="insertMmiStatus" parameterType="java.util.HashMap">
+		MERGE INTO MMI_STATUS (PROC_CODE, PROC_INDX, PROC_EXCHANGE, WEIGHT, COLL_DTTI, TARGET)
+		KEY(PROC_CODE, PROC_INDX)
+		(
+			SELECT
+			     #{PROC_CODE} AS PROC_CODE,
+			     #{PROC_INDX} AS PROC_INDX,
+			     #{REMOTE_INFO.EXCHANGE} AS PROC_EXCHANGE,
+			     #{WEIGHT} AS WEIGHT,
+			     FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmss') AS COLL_DTTI,
+			     #{TARGET} AS TARGET
+			FROM DUAL
+		)
+	</insert>
+
+	<!-- 통합인터페이스 정보저장 -->
+	<insert id="updateMmiStatus" parameterType="java.util.HashMap">
+		MERGE INTO MMI_STATUS (PROC_CODE, PROC_INDX, PROC_STAT, COLL_DTTI)
+		KEY(PROC_CODE, PROC_INDX)
+		(
+			SELECT
+			     #{PROC_CODE} AS PROC_CODE,
+			     #{PROC_INDX} AS PROC_INDX,
+			     #{PROC_STAT} AS PROC_STAT,
+			     FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmss') AS COLL_DTTI
+			FROM DUAL
+		)
+	</insert>
+	
+	<!-- MMI 프로세스운 hang 감시 -->
+	<select id="selectMmiStatus" resultType="java.util.HashMap">
+	<![CDATA[
+		SELECT 
+			FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmssSSS') || cast ((rand() * 1000) as int) AS FALT_ID,
+			A.PROC_CODE      AS FALT_GBN_CD,
+			A.PROC_NAME      AS PROC_NAME,
+			A.PROC_CODE      AS PROC_CODE,
+			A.PROC_INDX      AS PROC_INDX,
+			A.SMS_SEND_CNT   AS SMS_SEND_CNT,
+			A.WATCH_YN       AS WATCH_YN,
+			B.COLL_DTTI      AS COLL_DTTI,
+			'[process hang]' || A.PROC_NAME || '/' || A.PROC_INDX AS TRANS_CONTS
+		FROM TARGET_PROCESS_INFO A, MMI_STATUS B
+		WHERE 1=1
+		AND A.PROC_CODE = B.PROC_CODE
+		AND A.PROC_INDX = B.PROC_INDX
+		AND ((B.PROC_STAT IS 'down') OR (PARSEDATETIME(B.COLL_DTTI, 'yyyyMMddHHmmss') < DATEADD('SECOND', -300, SYSDATE)))
+	]]>
+	</select>
+
+	<!-- 
+	<insert id="updateMmiStatus" parameterType="java.util.HashMap">
+		UPDATE MMI_STATUS SET PROC_STAT = #{PROC_STAT}
+		WHERE PROC_CODE = #{PROC_CODE} AND PROC_INDX = #{PROC_INDX}
+	</insert>
+	 -->
+
+	<!-- 감시 프로세스 정보 조회 -->	
+	<select id="selectTargetProcessInfo" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT PROC_NO, PROC_NAME, PROC_CODE, PROC_INDX, HOST_IP, HOST_ID, HOST_PW, PROMPT
+		FROM TARGET_PROCESS_INFO
+		WHERE 1=1
+		AND PROC_CODE = #{PROC_CODE}
+		AND PROC_INDX = #{PROC_INDX}
+	</select>
+
+	<select id="selectTargetConnectInfo" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT DISTINCT PROC_CODE, PROC_INDX, HOST_IP, HOST_ID, HOST_PW, PROMPT
+		FROM TARGET_PROCESS_INFO
+	</select>
+
+	<!-- 수신 프로세스 상태정보 저장 -->
+	<insert id="insertProcessStatusData" parameterType="java.util.HashMap">
+		MERGE INTO PROCESS_STATUS_DATA (COLL_DTTI, PROC_NAME, PROC_CODE, PROC_INDX, PROC_STAT, PID_INFO, CPU_INFO, MEM_INFO,
+			RSS_INFO, DEFUNCT_CNT, JOB_STT_TIME, JOB_END_TIME)
+		KEY(PROC_NAME, PROC_INDX)
+		(
+			SELECT
+			     #{COLL_DTTI} AS COLL_DTTI,
+			     #{PROC_NAME} AS PROC_NAME,
+			     #{PROC_CODE} AS PROC_CODE,
+			     NVL2(#{PROC_INDX}, #{PROC_INDX}, '') AS PROC_INDX,
+			     #{PROC_STAT}    AS PROC_STAT,
+			     #{PID_INFO}     AS PID_INFO,
+			     #{CPU_INFO}     AS CPU_INFO,
+			     #{MEM_INFO}     AS MEM_INFO,
+			     #{RSS_INFO}     AS RSS_INFO,
+			     #{DEFUNCT_CNT}  AS DEFUNCT_CNT,
+			     #{JOB_STT_TIME} AS JOB_STT_TIME,
+			     #{JOB_END_TIME} AS JOB_END_TIME
+			FROM DUAL
+		)
+	</insert>
+
+	<!-- 프로세스 다운 감시 -->
+	<select id="selectDownStatusProcess" resultType="java.util.HashMap">
+	<![CDATA[
+		SELECT 
+			FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmssSSS') || cast ((rand() * 1000) as int) AS FALT_ID,
+			A.PROC_CODE      AS FALT_GBN_CD,
+			A.PROC_NAME      AS PROC_NAME,
+			A.PROC_CODE      AS PROC_CODE,
+			A.PROC_INDX      AS PROC_INDX,
+			A.SMS_SEND_CNT   AS SMS_SEND_CNT,
+			A.WATCH_YN       AS WATCH_YN,
+			B.COLL_DTTI      AS COLL_DTTI,
+			'[process down]' || A.PROC_NAME || '/' || A.PROC_INDX AS TRANS_CONTS
+		FROM TARGET_PROCESS_INFO A LEFT OUTER JOIN PROCESS_STATUS_DATA B on A.PROC_CODE = B.PROC_CODE AND A.PROC_INDX = B.PROC_INDX
+		WHERE 1=1
+		AND ((B.PROC_STAT IS 'down') OR (PARSEDATETIME(B.COLL_DTTI, 'yyyyMMddHHmmss') < DATEADD('SECOND', -300, SYSDATE)))
+	]]>
+	</select>
+
+	<!-- 좀비 프로세스 감시 -->
+	<select id="selectHangStatusProcess" resultType="java.util.HashMap">
+	<![CDATA[
+		SELECT 
+			FORMATDATETIME(SYSDATE, 'yyyyMMddHHmmssSSS') || cast ((rand() * 1000) as int) AS FALT_ID,
+			A.PROC_CODE      AS FALT_GBN_CD,
+			A.PROC_NAME      AS PROC_NAME,
+			A.PROC_CODE      AS PROC_CODE,
+			A.PROC_INDX      AS PROC_INDX,
+			A.SMS_SEND_CNT   AS SMS_SEND_CNT,
+			B.COLL_DTTI      AS COLL_DTTI,
+			'[process defunt]' || A.PROC_NAME || '/' || A.PROC_INDX AS TRANS_CONTS
+		FROM TARGET_PROCESS_INFO A LEFT OUTER JOIN PROCESS_STATUS_DATA B on A.PROC_CODE = B.PROC_CODE AND A.PROC_INDX = B.PROC_INDX
+		WHERE 1=1
+		AND B.DEFUNCT_CNT > #{MAX_DEFUNCT_CNT}
+	]]>
+	</select>
+
+	<!-- SMS 전송횟수 업데이트-->
+	<update id="updateDownStatusProcess" >
+		UPDATE TARGET_PROCESS_INFO A SET SMS_SEND_CNT = 
+		(
+	        SELECT SMS_SEND_CNT 
+	        FROM 
+	        (
+                SELECT
+                        DISTINCT B.PROC_CODE, B.PROC_INDX,
+                        CASE A.PROC_STAT
+                        WHEN 'down' then B.SMS_SEND_CNT + 1
+                        WHEN 'up'   then 0
+                        END AS SMS_SEND_CNT
+                FROM
+                PROCESS_STATUS_DATA A, TARGET_PROCESS_INFO B
+                WHERE 1=1
+                AND A.PROC_CODE = B.PROC_CODE
+                AND A.PROC_INDX = B.PROC_INDX
+	        ) B
+	        WHERE 1=1
+	        AND A.PROC_CODE = B.PROC_CODE
+	        AND A.PROC_INDX = B.PROC_INDX
+		)
+	</update>
+
+	
+	<!-- 최신 프로세스 상태정보 조회 
+	<select id="selectProcessStatusData" resultType="java.util.HashMap">
+		SELECT A.PROC_NAME, A.PROC_INDX, A.PROC_CODE, A.HOST_IP,
+			NVL2(B.PROC_STAT, B.PROC_STAT, 'n/a') AS PROC_STAT,
+			NVL2(B.PID_INFO , B.PID_INFO , 'n/a') AS PID_INFO,
+			NVL2(B.CPU_INFO , B.CPU_INFO , 'n/a') AS CPU_INFO,
+			NVL2(B.MEM_INFO , B.MEM_INFO , 'n/a') AS MEM_INFO,
+			NVL2(B.RSS_INFO , B.RSS_INFO , 'n/a') AS RSS_INFO,
+			NVL2(B.DEFUNCT_CNT , B.DEFUNCT_CNT , 0) AS DEFUNCT_CNT
+		FROM TARGET_PROCESS_INFO A LEFT OUTER JOIN PROCESS_STATUS_DATA B on A.PROC_CODE = B.PROC_CODE AND A.PROC_INDX = B.PROC_INDX
+		ORDER BY A.PROC_NO
+	</select>
+	-->
+	
+	<!-- 최신 프로세스 상태정보 조회  MMI 상태추가 20201119-->
+	<select id="selectProcessStatusData" resultType="java.util.HashMap">
+		SELECT A.PROC_NAME, A.PROC_INDX, A.PROC_CODE, A.HOST_IP,
+			NVL2(B.PROC_STAT, B.PROC_STAT, 'n/a') AS PROC_STAT,
+			NVL2(B.PID_INFO , B.PID_INFO , 'n/a') AS PID_INFO,
+			NVL2(B.CPU_INFO , B.CPU_INFO , 'n/a') AS CPU_INFO,
+			NVL2(B.MEM_INFO , B.MEM_INFO , 'n/a') AS MEM_INFO,
+			NVL2(B.RSS_INFO , B.RSS_INFO , 'n/a') AS RSS_INFO,
+			NVL2(B.DEFUNCT_CNT , B.DEFUNCT_CNT , 0) AS DEFUNCT_CNT,
+			NVL2(C.PROC_STAT, C.PROC_STAT, 'n/a') AS MMI_STAT
+		FROM TARGET_PROCESS_INFO A
+			LEFT OUTER JOIN PROCESS_STATUS_DATA B on A.PROC_CODE = B.PROC_CODE AND A.PROC_INDX = B.PROC_INDX
+			LEFT OUTER JOIN MMI_STATUS          C on A.PROC_CODE = C.PROC_CODE AND A.PROC_INDX = C.PROC_INDX			
+		ORDER BY A.PROC_NO
+	</select>
+
+</mapper>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "HTTP://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+	<settings>
+		<setting name="callSettersOnNulls"       value="true"   />
+		<setting name="mapUnderscoreToCamelCase" value="true"   />
+		<setting name="jdbcTypeForNull"          value="VARCHAR"/>
+		<setting name="cacheEnabled" value="false" /> 		
+	</settings>
+
+	<typeAliases>
+		<typeAlias alias="DBCP" type="com.mlog.faultmgr.datasource.MyBasicDataSource"/>
+	</typeAliases>
+
+    <environments default="cats">
+        <environment id="cats">
+            <transactionManager type="JDBC" />
+            <dataSource type="DBCP">
+			<property name="driverClassName" value="${driver}"   />
+			<property name="url"             value="${url}"      />
+			<property name="username"        value="${username}" />
+			<property name="password"        value="${password}" />
+			<property name="maxIdle"         value="${maxIdle}"  />
+			<property name="minIdle"         value="${minIdle}"  />
+			<property name="maxWait"         value="${maxWait}"  />
+			<property name="maxActive"       value="${maxActive}"/>
+			<property name="initialSize"     value="${initialSize}"/>
+		    <property name="validationQuery" value="SELECT 1 FROM DUAL"/>
+    		<property name="testOnBorrow"    value="true"/>			
+            </dataSource>
+        </environment>
+    </environments>
+
+	<mappers>
+		<mapper resource="db/mapper/H2MDataAccessMapper.xml" />
+	</mappers>
+
+</configuration>
